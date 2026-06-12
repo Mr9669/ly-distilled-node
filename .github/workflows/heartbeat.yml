@@ -1,26 +1,23 @@
-name: Distilled Node Heartbeat
+name: Heartbeat Cron
 
 on:
   schedule:
-    - cron: "*/5 * * * *"  # Every 5 minutes
-  workflow_dispatch:  # Manual trigger
+    - cron: '*/5 * * * *'  # Run every 5 minutes via GitHub Actions
+  workflow_dispatch:  # Allow manual trigger
 
 jobs:
   heartbeat:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Call Vercel heartbeat endpoint
+        run: |
+          curl -s -o /dev/null -w "HTTP %{http_code} in %{time_total}s\n" \
+            https://ly-distilled-node.vercel.app/api/
+          echo "Heartbeat sent"
       
-      - name: Heartbeat
-        env:
-          LY_HB_URL: ${{ secrets.LY_HB_URL }}
-          LY_HB_KEY: ${{ secrets.LY_HB_KEY }}
-          LY_NODE_ID: ${{ secrets.LY_NODE_ID }}
-          LY_SIGN_KEY: ${{ secrets.LY_SIGN_KEY }}
-        run: python3 api/index.py
-
-      - name: Debug
+      - name: Retry on failure
         if: failure()
         run: |
-          echo "HB_URL: ${LY_HB_URL:0:50}..."
-          echo "NODE_ID: $LY_NODE_ID"
+          sleep 10
+          curl -s -o /dev/null -w "Retry: HTTP %{http_code}\n" \
+            https://ly-distilled-node.vercel.app/api/
