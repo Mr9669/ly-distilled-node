@@ -1,0 +1,26 @@
+name: Distilled Node Heartbeat
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"  # Every 5 minutes
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Heartbeat
+        env:
+          LY_HB_URL: ${{ secrets.LY_HB_URL }}
+          LY_HB_KEY: ${{ secrets.LY_HB_KEY }}
+          LY_NODE_ID: ${{ secrets.LY_NODE_ID }}
+          LY_SIGN_KEY: ${{ secrets.LY_SIGN_KEY }}
+        run: python3 api/index.py
+
+      - name: Debug
+        if: failure()
+        run: |
+          echo "HB_URL: ${LY_HB_URL:0:50}..."
+          echo "NODE_ID: $LY_NODE_ID"
