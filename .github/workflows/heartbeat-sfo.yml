@@ -1,0 +1,28 @@
+# heartbeat-sfo.yml — GH Actions变体: San Francisco区域标记
+name: Distilled Node Heartbeat - San Francisco
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Heartbeat (San Francisco)
+        env:
+          LY_HB_URL: ${{ secrets.LY_HB_URL }}
+          LY_HB_KEY: ${{ secrets.LY_HB_KEY }}
+          LY_NODE_ID: gh-actions-sfo
+          LY_SIGN_KEY: ${{ secrets.LY_SIGN_KEY }}
+          LY_REGION: us-west-1
+        run: python3 api/index.py
+
+      - name: Debug (on failure)
+        if: failure()
+        run: |
+          echo "NODE_ID: gh-actions-sfo"
+          echo "REGION: us-west-1"
