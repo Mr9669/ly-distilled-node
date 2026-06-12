@@ -1,0 +1,28 @@
+# heartbeat-tokyo.yml — GH Actions变体: Tokyo区域标记
+name: Distilled Node Heartbeat - Tokyo
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  heartbeat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Heartbeat (Tokyo)
+        env:
+          LY_HB_URL: ${{ secrets.LY_HB_URL }}
+          LY_HB_KEY: ${{ secrets.LY_HB_KEY }}
+          LY_NODE_ID: gh-actions-tokyo
+          LY_SIGN_KEY: ${{ secrets.LY_SIGN_KEY }}
+          LY_REGION: ap-northeast-1
+        run: python3 api/index.py
+
+      - name: Debug (on failure)
+        if: failure()
+        run: |
+          echo "NODE_ID: gh-actions-tokyo"
+          echo "REGION: ap-northeast-1"
