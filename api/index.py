@@ -1,6 +1,6 @@
-# LY-TRINITY distilled_core.py V3.0 — 报身0.2微节点 Vercel Handler
-# For Vercel serverless (@vercel/python runtime)
-import json, os, sys, hashlib, random, platform
+# LY-TRINITY Distilled Node Vercel Handler v2.0
+# Fixed: proper routing, /health endpoint, error handling
+import json, os, sys, hashlib, random, platform, time
 from http.server import BaseHTTPRequestHandler
 from urllib import request as ureq
 from datetime import datetime, timezone
@@ -26,6 +26,7 @@ def env_anomaly():
     return f
 
 def do_heartbeat():
+    """Send heartbeat to Supabase if configured."""
     if not HB_URL:
         return {"ok": False, "error": "HB_URL not configured", "node_id": NODE_ID}
     dt = _now()
@@ -53,9 +54,56 @@ def do_heartbeat():
     except Exception as e:
         return {"ok": False, "error": str(e), "node_id": NODE_ID}
 
+def health_check():
+    """Return simple health status."""
+    return {
+        "ok": True,
+        "status": "healthy",
+        "node_id": NODE_ID,
+        "timestamp": _now(),
+        "hb_configured": bool(HB_URL),
+        "python": sys.version[:40],
+        "platform": platform.platform()[:80]
+    }
+
 class handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        result = do_heartbeat()
+        path = self.path.split('?')[0].rstrip('/')
+        
+        if path in ('', '/health', '/api', '/api/health'):
+            # Health check endpoint
+            result = health_check()
+            body = json.dumps(result, ensure_ascii=False).encode('utf-8')
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        elif path == '/api/heartbeat':
+            # Heartbeat endpoint
+            result = do_heartbeat()
+            body = json.dumps(result, ensure_ascii=False).encode('utf-8')
+            status = 200 if result.get("ok") else 500
+            self.send_response(status)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+        else:
+            body = json.dumps({"ok": False, "error": "not_found", "path": path}).encode('utf-8')
+            self.send_response(404)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Content-Length', str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+    
+    def do_POST(self):
+        # POST to /api or /api/heartbeat triggers heartbeat
+        path = self.path.split('?')[0].rstrip('/')
+        if path in ('', '/api', '/api/heartbeat'):
+            result = do_heartbeat()
+        else:
+            result = health_check()
         body = json.dumps(result, ensure_ascii=False).encode('utf-8')
         status = 200 if result.get("ok") else 500
         self.send_response(status)
@@ -63,9 +111,6 @@ class handler(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         self.wfile.write(body)
-    
-    def do_POST(self):
-        self.do_GET()
     
     def log_message(self, format, *args):
         pass
